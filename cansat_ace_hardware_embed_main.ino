@@ -63,7 +63,7 @@ auto timer = timer_create_default();
 String sw_state_list[5] = {"READY", "ASCENDING", "RELEASING", "DESCENDING", "GROUNDED"};
 String sw_state = sw_state_list[0];
 String pl_state = "N";
-int count = 0;
+int packet_count = 0;
 float ground_pressure;
 String packet = "";
 
@@ -74,38 +74,26 @@ bool send_packet(void *){
   //TEAM_ID, MISSION_TIME, PACKET_COUNT, SW_STATE, PL_STATE, ALTITUDE, TEMP, VOLTAGE, GPS_LATITUDE, GPS_LONGITUDE
   bmp.performReading();
 
-  packet = "1005," 
-  + cur_time() + "," 
-  + count + "," 
-  + sw_state + "," + pl_state + "," 
-  + bmp.readAltitude(ground_pressure) + "," 
-  + bmp.temperature + "," 
-  + (float(analogRead(VOLT_PIN)) * (3.3/4095.0) / (1.0/3.0)) + "," 
-  + nmea.getLatitude() + "," 
-  + nmea.getLongitude();
+  packet = "1005," //TEAM_ID
+  + cur_time() + "," //MISSION_TIME
+  + packet_count + "," //PACKET_COUNT
+  + sw_state + "," //SOFTWARE_STATE
+  + pl_state + "," //PAYLOAD_STATE
+  + bmp.readAltitude(ground_pressure) + "," //ALTITUDE
+  + bmp.temperature + "," //TEMPERATURE
+  + (float(analogRead(VOLT_PIN)) * (3.3/4095.0) / (1.0/3.0)) + "," //VOLTAGE (analogRead * (max_voltage/12bits) / (ratio of resistors))
+  + nmea.getLatitude() + "," //GPS_LATITUDE
+  + nmea.getLongitude();  //GPS_LOGITUDE
 
   XBee.println(packet);
   OpenLog.println(packet);
+
   packet = "";
-  packet_count();
+  packet_count++;
   nmea.clear();
   return true;
 }
 
-bool toggle_led(void *) {
-  digitalWrite(led, !digitalRead(led)); // toggle the LED
-  return true; // keep timer active? true
-}
-
-bool toggle_buzzer(void *) {
-  digitalWrite(buzzer, !digitalRead(buzzer)); // toggle the buzzer
-  return true; // keep buzzer active? true
-}
-
-
-void packet_count(){
-  count++;
-}
 
 String cur_time(){
   unsigned long runMillis = millis();
@@ -122,8 +110,7 @@ String cur_time(){
 
 void SFE_UBLOX_GNSS::processNMEA(char incoming)
 {
-  //Take the incoming char from the u-blox I2C port and pass it on to the MicroNMEA lib
-  //for sentence cracking
+  //Take the incoming char from the u-blox I2C port and pass it on to the MicroNMEA lib for sentence cracking
   nmea.process(incoming);
 }
 
@@ -131,7 +118,6 @@ void SFE_UBLOX_GNSS::processNMEA(char incoming)
 
 /*                       |SETUP|                     */
 void setup(){
-  //Serial.begin(9600);
   analogReadResolution(12);
 
   //OpenLog setup
@@ -154,7 +140,6 @@ void setup(){
     while(1);
   }
   zoe.setProcessNMEAMask(SFE_UBLOX_FILTER_NMEA_GGA);
-  //zoe.setNMEAOutputPort(XBee);
 
 
   //BMP setup
@@ -183,9 +168,7 @@ void setup(){
 
 
   //Timer setup
-  //timer.every(1000, toggle_led);
   timer.every(1000, send_packet);
-  //timer.every(60000, drop);
 }
 
 
