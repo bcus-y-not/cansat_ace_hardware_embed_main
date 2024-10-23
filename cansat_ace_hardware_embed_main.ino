@@ -71,9 +71,10 @@ String packet = "";
 /*                     |FUNCTIONS|                   */
 
 bool send_packet(void *){
-  //TEAM_ID, MISSION_TIME, PACKET_COUNT, SW_STATE, PL_STATE, ALTITUDE, TEMP, VOLTAGE, GPS_LATITUDE, GPS_LONGITUDE
+  
   bmp.performReading();
 
+  //TEAM_ID, MISSION_TIME, PACKET_COUNT, SW_STATE, PL_STATE, ALTITUDE, TEMP, VOLTAGE, GPS_LATITUDE, GPS_LONGITUDE
   packet = "1005," //TEAM_ID
   + cur_time() + "," //MISSION_TIME
   + packet_count + "," //PACKET_COUNT
