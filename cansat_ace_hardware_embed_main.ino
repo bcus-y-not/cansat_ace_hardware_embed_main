@@ -38,7 +38,6 @@
 #include <SoftwareSerial.h>
 #include <arduino-timer.h>
 #include <SparkFun_u-blox_GNSS_Arduino_Library.h>
-#include <MicroNMEA.h>
 
 
 //Pin defs
@@ -55,8 +54,6 @@ Servo release_servo;
 Adafruit_BMP3XX bmp;
 SFE_UBLOX_GNSS zoe;
 
-char nmeaBuffer[100];
-MicroNMEA nmea(nmeaBuffer, sizeof(nmeaBuffer));
 
 auto timer = timer_create_default();
 
@@ -83,15 +80,14 @@ bool send_packet(void *){
   + bmp.readAltitude(ground_pressure) + "," //ALTITUDE
   + bmp.temperature + "," //TEMPERATURE
   + (float(analogRead(VOLT_PIN)) * (3.3/4095.0) / (1.0/3.0)) + "," //VOLTAGE (analogRead * (max_voltage/12bits) / (ratio of resistors))
-  + nmea.getLatitude() + "," //GPS_LATITUDE
-  + nmea.getLongitude();  //GPS_LOGITUDE
+  + String((zoe.getLatitude()/10000000.0), 4) + ","//GPS_LATITUDE
+  + String((zoe.getLongitude()/10000000.0), 4); //GPS_LONGITUDE
 
   XBee.println(packet);
   OpenLog.println(packet);
 
   packet = "";
   packet_count++;
-  nmea.clear();
   return true;
 }
 
@@ -107,12 +103,6 @@ String cur_time(){
   char time[11];
   sprintf(time, "%02d:%02d:%02d:%02d", h, m, s, ms);
   return String(time);
-}
-
-void SFE_UBLOX_GNSS::processNMEA(char incoming)
-{
-  //Take the incoming char from the u-blox I2C port and pass it on to the MicroNMEA lib for sentence cracking
-  nmea.process(incoming);
 }
 
 
@@ -140,7 +130,7 @@ void setup(){
     XBee.println("CRITICAL: Could not find a valid GPS device, check wiring!");
     while(1);
   }
-  zoe.setProcessNMEAMask(SFE_UBLOX_FILTER_NMEA_GGA);
+  zoe.setI2COutput(COM_TYPE_UBX);
 
 
   //BMP setup
