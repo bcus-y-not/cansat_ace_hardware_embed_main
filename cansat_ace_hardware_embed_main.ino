@@ -41,6 +41,7 @@
 
 
 //Pin defs
+const int cam_wire = 0;
 const int buzzer = 15;
 const int led = 16;
 const int servo_wire = 17;
@@ -53,7 +54,6 @@ SoftwareSerial OpenLog(4, 5);
 Servo release_servo;
 Adafruit_BMP3XX bmp;
 SFE_UBLOX_GNSS zoe;
-
 
 auto timer = timer_create_default();
 
@@ -81,7 +81,9 @@ bool send_packet(void *){
   + bmp.temperature + "," //TEMPERATURE
   + (float(analogRead(VOLT_PIN)) * (3.3/4095.0) / (1.0/3.0)) + "," //VOLTAGE (analogRead * (max_voltage/12bits) / (ratio of resistors))
   + String((zoe.getLatitude()/10000000.0), 4) + ","//GPS_LATITUDE
-  + String((zoe.getLongitude()/10000000.0), 4); //GPS_LONGITUDE
+  + String((zoe.getLongitude()/10000000.0), 4) //GPS_LONGITUDE
+  + ",," //Extra packets
+  + bmp.readPressure(); //Read pressure
 
   XBee.println(packet);
   OpenLog.println(packet);
@@ -104,8 +106,6 @@ String cur_time(){
   sprintf(time, "%02d:%02d:%02d:%02d", h, m, s, ms);
   return String(time);
 }
-
-
 
 /*                       |SETUP|                     */
 void setup(){
@@ -148,9 +148,17 @@ void setup(){
   bmp.setOutputDataRate(BMP3_ODR_50_HZ);
   
 
-  //Buzzer and LED setup
+  //Buzzer, LED, camera setup
   pinMode(led, OUTPUT);
   pinMode(buzzer, OUTPUT);
+  pinMode(cam_wire, OUTPUT);
+
+  digitalWrite(cam_wire, HIGH);
+  delay(1000);
+  digitalWrite(cam_wire, LOW);  
+  delay(750);
+  digitalWrite(cam_wire, HIGH);   
+  delay(5000);
   
 
   //Servo setup
@@ -190,12 +198,21 @@ void loop(){
 
   if(sw_state == sw_state_list[3]){   //DESCENDING
     if(bmp.readAltitude(ground_pressure) <= 20){
+      digitalWrite(cam_wire, LOW);  
+      delay(750);
+      digitalWrite(cam_wire, HIGH);
       sw_state = sw_state_list[4];
     }
   }
 
   if(sw_state == sw_state_list[4]){   //GROUNDED
     digitalWrite(led, HIGH);
-    digitalWrite(buzzer, HIGH);
+    for (int i = 0; i < 100; i++){
+      int noteDuration = 100 / 8;
+      tone(buzzer, i, noteDuration);
+      delay(noteDuration*1.3);
+      noTone(buzzer);
+    }
+    delay(1000);
   }
 }
